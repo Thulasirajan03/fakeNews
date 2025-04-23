@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fake News Detector</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/icon.png') }}" type="image/png">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans flex items-center justify-center min-h-screen">
+    <div class="container mx-auto p-6 bg-white rounded-lg shadow-lg w-full max-w-4xl">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Fake News Detector</h1>
+        
+        <form id="newsForm" class="space-y-4">
+            <textarea id="newsText" rows="4" class="w-full p-3 border border-gray-300 rounded-lg text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter news text here..."></textarea>
+            
+            <div class="flex justify-center">
+                <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300">Check News</button>
+            </div>
+        </form>
+
+        <div id="result" class="mt-6"></div>
+    </div>
+
+    <script>
+        document.getElementById("newsForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            const newsText = document.getElementById("newsText").value;
+
+            fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ "news_text": newsText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                let resultHTML = `<div class="text-xl font-semibold text-center mb-4">
+                        Prediction: <span class="text-xl font-bold ${data.prediction === 'Real News' ? 'text-green-600' : 'text-red-600'}">${data.prediction}</span>
+                    </div>`;
+
+                // Check if there are search results
+                if (data.search_results.length > 0) {
+                    resultHTML += "<h3 class='text-xl font-semibold mb-2'>Search Results:</h3><ul class='space-y-3'>";
+                    data.search_results.forEach(result => {
+                        resultHTML += `<li class="p-4 bg-gray-100 rounded-lg shadow-md"><a href="${result.link}" target="_blank" class="text-blue-500 hover:underline font-semibold">${result.title}</a><p class="text-sm text-gray-600">${result.snippet}</p></li>`;
+                    });
+                    resultHTML += "</ul>";
+                } else {
+                    resultHTML += "<p class='text-gray-600'>No sources found.</p>";
+                }
+
+                //Fact Check Results
+                if (data.fact_check_results.length > 0) {
+                    resultHTML += "<h3 class='text-xl font-semibold mt-6 mb-2'>Fact Check Results:</h3><ul class='space-y-3'>";
+                    data.fact_check_results.forEach(result => {
+                        resultHTML += `<li class="p-4 bg-gray-100 rounded-lg shadow-md"><a href="${result.url}" target="_blank" class="text-blue-500 hover:underline">${result.review}: ${result.text}</a></li>`;
+                    });
+                    resultHTML += "</ul>";
+                }
+
+                //result
+                document.getElementById("result").innerHTML = resultHTML;
+            })
+            .catch(error => {
+                document.getElementById("result").innerHTML = "<p class='text-red-600 font-semibold'>Error occurred. Please Enter News Article.</p>";
+            });
+        });
+    </script>
+</body>
+</html>
